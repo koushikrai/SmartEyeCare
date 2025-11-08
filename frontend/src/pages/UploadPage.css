@@ -1,0 +1,17 @@
+.upload-container {
+    background-image: url("https://smb.ibsrv.net/imageresizer/image/blog_images/1200x1200/10912/505530/0095416001642096578.jpg"); /* Path to your image */
+
+    filter: grayscale(30%);
+    filter: contrast(69%);
+    background-size: cover; /* Ensure the image covers the entire container */
+    background-position: center; /* Center the image */
+    background-repeat: no-repeat; /* Prevent the image from repeating */
+    min-height: 100vh; /* Full viewport height */
+    display: flex; /* Use flexbox for centering content */
+    flex-direction: column; /* Arrange children vertically */
+    justify-content: center; /* Center content vertically */
+    align-items: center; /* Center content horizontally */
+    padding: 20px;
+    color: rgb(16, 16, 16); /* White text for better contrast */
+     /* Add text shadow for readability */
+}

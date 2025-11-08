@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/static/css/main.22ef3a5d.css",
+    "main.js": "/static/js/main.9b5d615d.js",
+    "static/js/453.8ab44547.chunk.js": "/static/js/453.8ab44547.chunk.js",
+    "static/media/cattleimage.jpg": "/static/media/cattleimage.848e8d6cae71bd784eac.jpg",
+    "static/media/cattlelogo.jpg": "/static/media/cattlelogo.b01b883d62f0a1fbef6f.jpg",
+    "index.html": "/index.html",
+    "main.22ef3a5d.css.map": "/static/css/main.22ef3a5d.css.map",
+    "main.9b5d615d.js.map": "/static/js/main.9b5d615d.js.map",
+    "453.8ab44547.chunk.js.map": "/static/js/453.8ab44547.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.22ef3a5d.css",
+    "static/js/main.9b5d615d.js"
+  ]
+}
