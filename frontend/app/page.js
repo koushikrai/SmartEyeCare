@@ -61,6 +61,16 @@ const Login = () => {
                     </div>
                     <button type="submit" className="btn btn-primary w-100">Login</button>
                 </form>
+                <div className="text-center mt-3">
+                    <span>Don't have an account? </span>
+                    <button
+                        type="button"
+                        className="btn btn-link p-0 align-baseline"
+                        onClick={() => router.push('/signup')}
+                    >
+                        Sign up
+                    </button>
+                </div>
             </div>
         </div>
     );

@@ -4,6 +4,8 @@ from werkzeug.utils import secure_filename
 import os
 import numpy as np
 from PIL import Image
+from api.signup import signup_bp
+from api.login import login_bp
 
 try:
     from tensorflow.keras.models import load_model
@@ -14,6 +16,10 @@ except Exception:
 
 app = Flask(__name__)
 CORS(app)
+
+# Register blueprints
+app.register_blueprint(signup_bp)
+app.register_blueprint(login_bp)
 
 # --- Model and Constants ---
 REDNESS_MODEL_PATH = os.path.join("models", "redness_model.h5")
