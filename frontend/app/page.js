@@ -8,7 +8,7 @@ const Login = () => {
     const router = useRouter();
 
     const backgroundStyle = {
-        backgroundImage: "url('https://images.unsplash.com/photo-1528732224075-b4235a3d7065?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZXllJTIwY2FyZXxlbnwwfHwwfHx8MA%3D%3D')",
+        backgroundImage: "url('/images/Eyeimage.jpg')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         height: '100vh',
