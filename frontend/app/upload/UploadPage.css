@@ -1,0 +1,28 @@
+.upload-container {
+    background-image: url('https://c4.wallpaperflare.com/wallpaper/348/111/631/digital-art-eyes-eyelashes-brown-eyes-wallpaper-preview.jpg');
+    background-size: cover;
+    background-position: center;
+    min-height: 100vh;
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    filter: brightness(1);
+}
+
+.upload-container button {
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 15px;
+    width: 220px;
+    margin-bottom: 30px;
+}
+.result-section{
+    border:2px solid black;
+    margin-top:40px;
+    background-color:white;
+    filter:contrast(80%);
+}
