@@ -4,3 +4,4 @@ backend/models/
 *.h5
 *.dll
 *.pyd
+/node_modules

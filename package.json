@@ -1,0 +1,16 @@
+{
+  "name": "smarteyecare-root",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Root scripts to run SmartEyeCare frontend and backend together",
+  "scripts": {
+    "setup": "python -m pip install -r backend/requirements.txt && cd frontend && npm install",
+    "start": "concurrently -k -n backend,frontend -c blue,green \"python backend/app.py\" \"npm run dev --prefix frontend\"",
+    "start:wait": "concurrently -k -n backend,frontend -c blue,green \"python backend/app.py\" \"wait-on http://localhost:5000/api/health && npm run dev --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "wait-on": "^7.2.0"
+  }
+}
+
