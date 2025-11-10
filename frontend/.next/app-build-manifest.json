@@ -1,9 +1,10 @@
 {
   "pages": {
-    "/page": [
+    "/upload/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/css/app/upload/page.css",
+      "static/chunks/app/upload/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,20 +12,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/about/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/about/page.js"
-    ],
-    "/signup/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/signup/page.js"
-    ],
-    "/prevent-measures/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/prevent-measures/page.js"
+      "static/chunks/app/page.js"
     ],
     "/feedback/page": [
       "static/chunks/webpack.js",

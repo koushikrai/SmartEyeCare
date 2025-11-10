@@ -158,16 +158,38 @@ const UploadPage = () => {
         }
     };
 
+    const backgroundStyle = {
+        backgroundImage: "url('https://smb.ibsrv.net/imageresizer/image/blog_images/1200x1200/10912/505530/0095416001642096578.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "20px",
+    };
+
+    const containerStyle = {
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        padding: "40px",
+        borderRadius: "15px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+        width: "100%",
+        maxWidth: "600px",
+        textAlign: "center",
+        fontFamily: "Arial, sans-serif",
+    };
+
     return (
-        <div className="upload-container">
-            <div style={{ padding: "20px", textAlign: "center", fontFamily: "Arial, sans-serif" }}>
-                <h1 style={{ fontSize: "50px", color: "#007BFF" }}>Smart Eye Health Check</h1>
-                <p style={{ marginBottom: "20px", fontSize: "20px", color: "orange" }}>
+        <div style={backgroundStyle}>
+            <div style={containerStyle}>
+                <h1 style={{ fontSize: "40px", color: "#007BFF", marginBottom: "15px" }}>Smart Eye Health Check</h1>
+                <p style={{ marginBottom: "30px", fontSize: "18px", color: "#666" }}>
                     Upload or scan an eye to detect signs of strain, redness, or myopia.
                 </p>
 
                 {/* Toggle between upload and webcam */}
-                <div style={{ marginBottom: "10px", display: "flex", justifyContent: "center", gap: "10px" }}>
+                <div style={{ marginBottom: "20px", display: "flex", justifyContent: "center", gap: "10px" }}>
                     <button
                         onClick={() => setUseWebcam(false)}
                         className={`btn ${!useWebcam ? "btn-primary" : "btn-outline-primary"} btn-sm`}
@@ -180,20 +202,23 @@ const UploadPage = () => {
                         className={`btn ${useWebcam ? "btn-primary" : "btn-outline-primary"} btn-sm`}
                         style={{ minWidth: "120px" }}
                     >
-                    Use Webcam
+                        Use Webcam
                     </button>
                 </div>
 
                 {/* Conditional Input */}
                 {!useWebcam ? (
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        style={{ marginBottom: "15px" }}
-                    />
+                    <div style={{ marginBottom: "20px" }}>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="form-control"
+                            style={{ margin: "0 auto", maxWidth: "300px" }}
+                        />
+                    </div>
                 ) : (
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "15px" }}>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
                         <Webcam
                             audio={false}
                             ref={webcamRef}
@@ -208,40 +233,54 @@ const UploadPage = () => {
                 <button
                     onClick={handleUpload}
                     style={{
-                        padding: "10px 20px",
+                        padding: "12px 24px",
                         cursor: "pointer",
                         backgroundColor: "#28a745",
                         color: "white",
                         border: "none",
-                        borderRadius: "15px",
+                        borderRadius: "8px",
                         width: "220px",
-                        marginBottom: "30px"
+                        marginBottom: "30px",
+                        fontSize: "16px",
+                        fontWeight: "bold"
                     }}
                 >
                     {isLoading ? "Processing..." : useWebcam ? "Capture & Predict" : "Upload & Predict"}
                 </button>
 
                 {/* Result Section */}
-                <div style={{border:"2px solid black",marginTop:"40px",backgroundColor:"white",filter:"contrast(80%)"}}>
-            {result && (
-                <div style={{ marginTop: "20px", textAlign: "left", maxWidth: "500px", margin: "0 auto" ,color:"black"}}>
-                    <h3>Prediction Result:</h3>
-                    <p><strong>Disease:</strong> {result.disease}</p>
-                    <p><strong>Confidence:</strong> {(result.confidence * 100).toFixed(2)}%</p>
-                    <p><strong>Remedy:</strong> {result.remedy}</p>
-                    <hr />
-                    <h4>Additional Indicators</h4>
-                    <p><strong>Blink rate:</strong> {result.blink_rate} per minute ({result.blink_status})</p>
-                    <p><strong>Myopia:</strong> {result.myopia_risk} {(result.myopia_confidence * 100).toFixed(0)}%</p>
-                </div>
-               
-                    )}
-                </div>
+                {result && (
+                    <div style={{
+                        border: "2px solid #007BFF",
+                        marginTop: "30px",
+                        backgroundColor: "rgba(255, 255, 255, 0.9)",
+                        borderRadius: "10px",
+                        padding: "20px",
+                        textAlign: "left",
+                        color: "black"
+                    }}>
+                        <h3 style={{ color: "#007BFF", marginBottom: "15px" }}>Prediction Result:</h3>
+                        <p><strong>Disease:</strong> {result.disease}</p>
+                        <p><strong>Confidence:</strong> {(result.confidence * 100).toFixed(2)}%</p>
+                        <p><strong>Remedy:</strong> {result.remedy}</p>
+                        <hr />
+                        <h4 style={{ marginTop: "15px", color: "#007BFF" }}>Additional Indicators</h4>
+                        <p><strong>Blink rate:</strong> {result.blink_rate} per minute ({result.blink_status})</p>
+                        <p><strong>Myopia:</strong> {result.myopia_risk} {(result.myopia_confidence * 100).toFixed(0)}%</p>
+                    </div>
+                )}
 
                 {/* Error Display */}
                 {error && (
-                    <div style={{ marginTop: "20px", color: "red" }}>
-                        <p>{error}</p>
+                    <div style={{ 
+                        marginTop: "20px", 
+                        color: "red",
+                        backgroundColor: "rgba(255, 0, 0, 0.1)",
+                        padding: "15px",
+                        borderRadius: "8px",
+                        border: "1px solid red"
+                    }}>
+                        <p style={{ margin: 0 }}>{error}</p>
                     </div>
                 )}
             </div>

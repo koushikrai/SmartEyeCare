@@ -1,7 +1,4 @@
 {
-  "/page": "app/page.js",
-  "/about/page": "app/about/page.js",
-  "/signup/page": "app/signup/page.js",
-  "/prevent-measures/page": "app/prevent-measures/page.js",
+  "/upload/page": "app/upload/page.js",
   "/feedback/page": "app/feedback/page.js"
 }
