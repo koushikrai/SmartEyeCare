@@ -358,4 +358,6 @@ def predict_eye_health():
         "fusion": fusion
     })
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Disable the Werkzeug reloader on Windows to avoid socket errors
+    # caused by the reloader restarting child threads/sockets.
+    app.run(debug=True, port=5000, use_reloader=False)

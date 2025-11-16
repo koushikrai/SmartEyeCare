@@ -40,9 +40,19 @@ LEFT_EYE_INDICES = [33, 133, 159, 158, 145, 153]
 RIGHT_EYE_INDICES = [362, 263, 386, 387, 374, 380]
 
 # Eye Aspect Ratio threshold
-EAR_THRESHOLD = 0.25
+import collections
+import os
+
+# Default thresholds (can be overridden by environment variables)
+EAR_THRESHOLD = float(os.getenv("EAR_THRESHOLD", "0.25"))
 # Consecutive frames below threshold to count as blink
-EAR_CONSEC_FRAMES = 2
+EAR_CONSEC_FRAMES = int(os.getenv("EAR_CONSEC_FRAMES", "2"))
+# Moving average window size for EAR smoothing to reduce noise
+EAR_SMOOTHING_WINDOW = int(os.getenv("EAR_SMOOTHING_WINDOW", "3"))
+# Haar-based fallback parameters
+HAAR_CLOSURE_FACTOR = float(os.getenv("HAAR_CLOSURE_FACTOR", "0.55"))
+HAAR_BASELINE_ALPHA = float(os.getenv("HAAR_BASELINE_ALPHA", "0.08"))
+HAAR_CONSEC_FRAMES = int(os.getenv("HAAR_CONSEC_FRAMES", "2"))
 
 def eye_aspect_ratio(eye_points):
     """
@@ -67,20 +77,29 @@ class BlinkRateDetector:
         """
         Initialize the blink rate detector using MediaPipe Face Mesh.
         """
+        # If MediaPipe is not available, fall back to OpenCV Haar cascades
         if not MEDIAPIPE_AVAILABLE:
-            error_msg = f"mediapipe is not available. {MEDIAPIPE_ERROR or 'Please install it to use blink detection.'}\n"
-            error_msg += "Install with: pip install mediapipe\n"
-            error_msg += "Make sure you're using Python 3.11 and the correct virtual environment."
-            raise ImportError(error_msg)
-        
-        # Initialize MediaPipe Face Mesh
-        self.face_mesh = face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
+            print(f"Warning: MediaPipe not available: {MEDIAPIPE_ERROR}")
+            print("Falling back to OpenCV Haar cascade eye detection. This is less accurate but avoids dependency conflicts.")
+            # Initialize Haar cascade for eyes
+            haar_path = cv2.data.haarcascades
+            self.eye_cascade = cv2.CascadeClassifier(os.path.join(haar_path, "haarcascade_eye.xml"))
+            self.use_haar = True
+        else:
+            # Initialize MediaPipe Face Mesh
+            self.face_mesh = face_mesh.FaceMesh(
+                static_image_mode=False,
+                max_num_faces=1,
+                refine_landmarks=True,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5
+            )
+            self.use_haar = False
+
+        # For smoothing EAR values across frames
+        self.ear_deque = collections.deque(maxlen=EAR_SMOOTHING_WINDOW)
+        # Haar fallback baseline for edge-density (None until initialized)
+        self.haar_baseline = None
     
     def detect_blinks_in_video(self, video_path):
         """
@@ -122,51 +141,123 @@ class BlinkRateDetector:
             if not ret:
                 break
             
-            # Convert BGR to RGB for MediaPipe
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
-            # Process frame with MediaPipe Face Mesh
-            results = self.face_mesh.process(rgb_frame)
-            
-            if results.multi_face_landmarks:
-                # Use the first detected face
-                face_landmarks = results.multi_face_landmarks[0]
-                
-                # Get image dimensions
-                h, w = frame.shape[:2]
-                
-                # Extract eye landmark points
-                left_eye_points = []
-                right_eye_points = []
-                
-                for idx in LEFT_EYE_INDICES:
-                    landmark = face_landmarks.landmark[idx]
-                    left_eye_points.append([landmark.x * w, landmark.y * h])
-                
-                for idx in RIGHT_EYE_INDICES:
-                    landmark = face_landmarks.landmark[idx]
-                    right_eye_points.append([landmark.x * w, landmark.y * h])
-                
-                # Convert to numpy arrays
-                left_eye = np.array(left_eye_points)
-                right_eye = np.array(right_eye_points)
-                
-                # Calculate EAR for both eyes
-                left_ear = eye_aspect_ratio(left_eye)
-                right_ear = eye_aspect_ratio(right_eye)
-                
-                # Average EAR for both eyes
-                ear = (left_ear + right_ear) / 2.0
-                
+            if not self.use_haar:
+                # Convert BGR to RGB for MediaPipe
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                # Process frame with MediaPipe Face Mesh
+                results = self.face_mesh.process(rgb_frame)
+
+                if results.multi_face_landmarks:
+                    # Use the first detected face
+                    face_landmarks = results.multi_face_landmarks[0]
+
+                    # Get image dimensions
+                    h, w = frame.shape[:2]
+
+                    # Extract eye landmark points
+                    left_eye_points = []
+                    right_eye_points = []
+
+                    for idx in LEFT_EYE_INDICES:
+                        landmark = face_landmarks.landmark[idx]
+                        left_eye_points.append([landmark.x * w, landmark.y * h])
+
+                    for idx in RIGHT_EYE_INDICES:
+                        landmark = face_landmarks.landmark[idx]
+                        right_eye_points.append([landmark.x * w, landmark.y * h])
+
+                    # Convert to numpy arrays
+                    left_eye = np.array(left_eye_points)
+                    right_eye = np.array(right_eye_points)
+
+                    # Calculate EAR for both eyes
+                    left_ear = eye_aspect_ratio(left_eye)
+                    right_ear = eye_aspect_ratio(right_eye)
+
+                    # Average EAR for both eyes
+                    raw_ear = (left_ear + right_ear) / 2.0
+                else:
+                    # No face detected in this frame
+                    frames_processed += 1
+                    continue
+            else:
+                # Haar-cascade fallback: detect eyes using OpenCV cascades
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                eyes = self.eye_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+
+                if len(eyes) == 0:
+                    frames_processed += 1
+                    continue
+
+                # Sort detections by area (largest first), pick up to two
+                eyes_sorted = sorted(eyes, key=lambda e: e[2]*e[3], reverse=True)[:2]
+
+                edge_densities = []
+                for (ex, ey, ew, eh) in eyes_sorted:
+                    # Extract eye ROI with a small padding
+                    pad_x = max(int(0.15 * ew), 2)
+                    pad_y = max(int(0.2 * eh), 2)
+                    x1 = max(ex - pad_x, 0)
+                    y1 = max(ey - pad_y, 0)
+                    x2 = min(ex + ew + pad_x, frame.shape[1])
+                    y2 = min(ey + eh + pad_y, frame.shape[0])
+
+                    roi = gray[y1:y2, x1:x2]
+                    if roi.size == 0:
+                        continue
+
+                    # Compute Canny edges and edge density
+                    edges = cv2.Canny(roi, 50, 150)
+                    edge_count = np.count_nonzero(edges)
+                    area = roi.shape[0] * roi.shape[1]
+                    density = float(edge_count) / float(area) if area > 0 else 0.0
+                    edge_densities.append(density)
+
+                if len(edge_densities) == 0:
+                    frames_processed += 1
+                    continue
+
+                # Average edge density across detected eyes
+                density = float(np.mean(edge_densities))
+
+                # Initialize or update baseline when eyes appear open
+                if self.haar_baseline is None:
+                    self.haar_baseline = density
+                else:
+                    # exponential moving average baseline
+                    self.haar_baseline = (HAAR_BASELINE_ALPHA * density) + ((1 - HAAR_BASELINE_ALPHA) * self.haar_baseline)
+
+                # Map density to a pseudo-'ear' value in [0,1] by normalizing to baseline
+                # When closed, density will drop significantly below baseline
+                if self.haar_baseline > 0:
+                    raw_ear = density / self.haar_baseline
+                else:
+                    raw_ear = density
+
+                # Shared processing: smooth EAR, debug log, and count blinks
+                # Smooth EAR using moving average to reduce jitter
+                self.ear_deque.append(raw_ear)
+                ear = float(np.mean(self.ear_deque))
+
+                # Debug logging: print occasional EAR values to help troubleshoot
+                if frames_processed % 30 == 0:
+                    print(f"Frame {frames_processed}: raw_ear={raw_ear:.3f}, smoothed_ear={ear:.3f}")
+
+                # Select thresholds depending on detection method
+                active_threshold = EAR_THRESHOLD if not self.use_haar else HAAR_CLOSURE_FACTOR
+                active_consec = EAR_CONSEC_FRAMES if not self.use_haar else HAAR_CONSEC_FRAMES
+
                 # Check if eyes are closed (EAR below threshold)
-                if ear < EAR_THRESHOLD:
+                if ear < active_threshold:
                     consecutive_frames += 1
                 else:
                     # If eyes were closed for enough consecutive frames, count as blink
-                    if consecutive_frames >= EAR_CONSEC_FRAMES:
+                    if consecutive_frames >= active_consec:
                         blink_counter += 1
+                        print(f"Blink detected at frame {frames_processed}: ear={ear:.3f}, consecutive={consecutive_frames}")
                     consecutive_frames = 0
-                
+
                 frames_processed += 1
         
         cap.release()
