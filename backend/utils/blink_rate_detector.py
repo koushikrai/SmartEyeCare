@@ -4,14 +4,32 @@ import os
 from scipy.spatial import distance as dist
 
 try:
-    # Import face_mesh directly to avoid TensorFlow dependency issues
-    from mediapipe.solutions import face_mesh
-    from mediapipe.solutions.drawing_utils import DrawingSpec
+    # Import face_mesh - correct path is mediapipe.python.solutions
+    from mediapipe.python.solutions import face_mesh
+    from mediapipe.python.solutions.drawing_utils import DrawingSpec
     MEDIAPIPE_AVAILABLE = True
-except ImportError:
+    MEDIAPIPE_ERROR = None
+except ImportError as e:
+    # Try alternative import path (older versions)
+    try:
+        from mediapipe.solutions import face_mesh
+        from mediapipe.solutions.drawing_utils import DrawingSpec
+        MEDIAPIPE_AVAILABLE = True
+        MEDIAPIPE_ERROR = None
+    except ImportError:
+        MEDIAPIPE_AVAILABLE = False
+        MEDIAPIPE_ERROR = str(e)
+        print(f"Warning: mediapipe import failed: {e}")
+        print("This might be due to:")
+        print("1. MediaPipe not installed in the current Python environment")
+        print("2. Using wrong Python interpreter (should use Python 3.11 venv)")
+        print("3. Protobuf version conflict")
+        print("Install with: pip install mediapipe")
+except Exception as e:
     MEDIAPIPE_AVAILABLE = False
-    print("Warning: mediapipe is not installed. Blink detection will not work.")
-    print("Install with: pip install mediapipe")
+    MEDIAPIPE_ERROR = str(e)
+    print(f"Warning: mediapipe import error: {e}")
+    print("This might be a dependency conflict (e.g., protobuf version)")
 
 # MediaPipe Face Mesh eye landmark indices (468-point model)
 # For EAR calculation, we need 6 points per eye in this order:
@@ -50,10 +68,10 @@ class BlinkRateDetector:
         Initialize the blink rate detector using MediaPipe Face Mesh.
         """
         if not MEDIAPIPE_AVAILABLE:
-            raise ImportError(
-                "mediapipe is not installed. Please install it to use blink detection.\n"
-                "Install with: pip install mediapipe"
-            )
+            error_msg = f"mediapipe is not available. {MEDIAPIPE_ERROR or 'Please install it to use blink detection.'}\n"
+            error_msg += "Install with: pip install mediapipe\n"
+            error_msg += "Make sure you're using Python 3.11 and the correct virtual environment."
+            raise ImportError(error_msg)
         
         # Initialize MediaPipe Face Mesh
         self.face_mesh = face_mesh.FaceMesh(

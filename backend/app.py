@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
+import sys
 import numpy as np
 from PIL import Image
 from dotenv import load_dotenv
@@ -10,6 +11,15 @@ from api.login import login_bp
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Check Python version and warn if not 3.11
+python_version = sys.version_info
+if python_version.major != 3 or python_version.minor != 11:
+    print(f"WARNING: You're using Python {python_version.major}.{python_version.minor}.{python_version.micro}")
+    print("MediaPipe requires Python 3.11. Please use the Python 3.11 virtual environment:")
+    print("  backend\\venv311\\Scripts\\python.exe backend/app.py")
+    print("Or use: npm start (which uses the correct Python)")
+    print("")
 
 try:
     from tensorflow.keras.models import load_model
