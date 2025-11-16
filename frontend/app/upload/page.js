@@ -68,6 +68,12 @@ const UploadPage = () => {
             const formData = new FormData();
             formData.append("video", selectedVideo);
 
+            // Extract user_id from localStorage if logged in
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            if (user && user.user_id) {
+                formData.append('user_id', user.user_id);
+            }
+
             const response = await axios.post("http://localhost:5000/api/predict/blink", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
@@ -84,6 +90,8 @@ const UploadPage = () => {
                     blink_count: data.blink_count || 0,
                     video_duration: data.video_duration_seconds || 0
                 });
+                // Trigger history refresh by emitting a custom event
+                window.dispatchEvent(new Event('historyUpdated'));
             }
         } catch (err) {
             console.error("Video upload failed:", err);
@@ -165,6 +173,8 @@ const UploadPage = () => {
                 // For MVP: generate randomized fallback results directly for webcam captures
                 const simulated = generateWebcamFallbackResult();
                 setResult(simulated);
+                // Trigger history refresh even for webcam (though not saved to DB without backend integration)
+                window.dispatchEvent(new Event('historyUpdated'));
                 setIsLoading(false);
                 return;
             }
@@ -177,6 +187,12 @@ const UploadPage = () => {
 
             const formData = new FormData();
             formData.append("image", fileToUpload);
+
+            // Extract user_id from localStorage if logged in
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            if (user && user.user_id) {
+                formData.append('user_id', user.user_id);
+            }
 
             const response = await axios.post("http://localhost:5000/api/predict/redness", formData, {
                 headers: {
@@ -213,6 +229,8 @@ const UploadPage = () => {
             };
 
             setResult(normalized);
+            // Trigger history refresh by emitting a custom event
+            window.dispatchEvent(new Event('historyUpdated'));
         } catch (err) {
             console.error("Upload failed:", err);
             setError("Failed to upload image or get prediction.");

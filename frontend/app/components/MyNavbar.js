@@ -14,6 +14,7 @@ const MyNavbar = () => {
                         <Nav.Link as={Link} href="/">Home</Nav.Link>
                         <Nav.Link as={Link} href="/about">About Us</Nav.Link>
                         <Nav.Link as={Link} href="/upload">Predict</Nav.Link>
+                        <Nav.Link as={Link} href="/history">History</Nav.Link>
                         <Nav.Link as={Link} href="/prevent-measures">Preventive Measures</Nav.Link>
                         <Nav.Link as={Link} href="/feedback">Feedback</Nav.Link>
                     </Nav>

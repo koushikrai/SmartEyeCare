@@ -8,6 +8,9 @@ from PIL import Image
 from dotenv import load_dotenv
 from api.signup import signup_bp
 from api.login import login_bp
+from api.history import history_bp
+from db import get_db
+from bson import ObjectId
 
 # Load environment variables from .env file
 load_dotenv()
@@ -34,6 +37,7 @@ CORS(app)
 # Register blueprints
 app.register_blueprint(signup_bp)
 app.register_blueprint(login_bp)
+app.register_blueprint(history_bp)
 
 # --- Model and Constants ---
 # Get the directory where this script is located (backend/)
@@ -107,6 +111,7 @@ def predict_redness(image_path):
             predicted_index = int(np.argmax(prediction))
             confidence = float(prediction[predicted_index])
             condition = ["normal", "redness"][predicted_index]
+            # Save history if user_id provided in environment context (not available here)
         else:
             # Fallback: Basic color-based redness detection
             # Analyze the image for red/pink tones that might indicate eye redness
@@ -249,8 +254,26 @@ def upload_and_predict_redness():
     filename = secure_filename(file.filename)
     image_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(image_path)
-
     result = predict_redness(image_path)
+
+    # Persist history if user_id provided in the form
+    try:
+        user_id = request.form.get('user_id')
+        if user_id:
+            db = get_db()
+            try:
+                uid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+            except Exception:
+                uid = user_id
+            db.history.insert_one({
+                'user_id': uid,
+                'kind': 'redness',
+                'input': {'image_path': image_path, 'filename': filename},
+                'result': result,
+                'created_at': __import__('datetime').datetime.utcnow()
+            })
+    except Exception as e:
+        print(f"Warning: could not save redness history: {e}")
     return jsonify(result)
 
 @app.route("/api/predict/blink", methods=["POST"])
@@ -275,6 +298,25 @@ def upload_and_predict_blink():
 
         # Process the video
         result = predict_blink_rate(video_path)
+
+        # Persist history if user_id provided in the form
+        try:
+            user_id = request.form.get('user_id')
+            if user_id:
+                db = get_db()
+                try:
+                    uid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+                except Exception:
+                    uid = user_id
+                db.history.insert_one({
+                    'user_id': uid,
+                    'kind': 'blink',
+                    'input': {'video_path': video_path, 'filename': filename},
+                    'result': result,
+                    'created_at': __import__('datetime').datetime.utcnow()
+                })
+        except Exception as e:
+            print(f"Warning: could not save blink history: {e}")
         
         # Clean up the uploaded file after processing
         try:
@@ -344,6 +386,35 @@ def predict_eye_health():
 
     # Fusion
     fusion = combine_eye_health(redness_confidence, blink_rate_value)
+
+    # Save combined history if user_id provided
+    try:
+        user_id = request.form.get('user_id')
+        if user_id:
+            db = get_db()
+            try:
+                uid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+            except Exception:
+                uid = user_id
+            db.history.insert_one({
+                'user_id': uid,
+                'kind': 'eyehealth',
+                'input': {'image_path': image_path},
+                'result': {
+                    'redness': {
+                        'condition': condition,
+                        'confidence': redness_confidence
+                    },
+                    'blink': {
+                        'blink_rate': blink_rate_value,
+                        'status': blink_status
+                    },
+                    'fusion': fusion
+                },
+                'created_at': __import__('datetime').datetime.utcnow()
+            })
+    except Exception as e:
+        print(f"Warning: could not save eyehealth history: {e}")
 
     return jsonify({
         "redness": {
