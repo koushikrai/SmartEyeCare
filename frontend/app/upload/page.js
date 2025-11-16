@@ -6,10 +6,12 @@ import "./UploadPage.css";
 
 const UploadPage = () => {
     const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedVideo, setSelectedVideo] = useState(null);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [useWebcam, setUseWebcam] = useState(false);
+    const [mode, setMode] = useState("image"); // "image" or "video"
     const webcamRef = useRef(null);
 
     const handleFileChange = (event) => {
@@ -30,6 +32,67 @@ const UploadPage = () => {
         setSelectedFile(file);
         setResult(null);
         setError(null);
+    };
+
+    const handleVideoChange = (event) => {
+        const file = event.target.files[0];
+
+        if (file && !file.type.startsWith("video/")) {
+            setError("Please upload a valid video file.");
+            setSelectedVideo(null);
+            return;
+        }
+
+        if (file && file.size > 50 * 1024 * 1024) {
+            setError("Video file size should not exceed 50MB.");
+            setSelectedVideo(null);
+            return;
+        }
+
+        setSelectedVideo(file);
+        setResult(null);
+        setError(null);
+    };
+
+    const handleVideoUpload = async () => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            if (!selectedVideo) {
+                setError("Please select a video file.");
+                setIsLoading(false);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("video", selectedVideo);
+
+            const response = await axios.post("http://localhost:5000/api/predict/blink", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+
+            const data = response.data || {};
+            if (data.error) {
+                setError(data.error);
+            } else {
+                setResult({
+                    blink_rate: data.blink_rate || 0,
+                    blink_status: data.status || "unknown",
+                    blink_count: data.blink_count || 0,
+                    video_duration: data.video_duration_seconds || 0
+                });
+            }
+        } catch (err) {
+            console.error("Video upload failed:", err);
+            const errorMessage = err.response?.data?.error || err.message || "Failed to process video. Please try again.";
+            setError(errorMessage);
+            console.error("Full error details:", err.response?.data);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const captureImageFromWebcam = () => {
@@ -184,69 +247,139 @@ const UploadPage = () => {
         <div style={backgroundStyle}>
             <div style={containerStyle}>
                 <h1 style={{ fontSize: "40px", color: "#007BFF", marginBottom: "15px" }}>Smart Eye Health Check</h1>
-                <p style={{ marginBottom: "30px", fontSize: "18px", color: "#666" }}>
+                <p style={{ marginBottom: "20px", fontSize: "18px", color: "#666" }}>
                     Upload or scan an eye to detect signs of strain, redness, or myopia.
                 </p>
 
-                {/* Toggle between upload and webcam */}
+                {/* Mode Toggle: Image or Video */}
                 <div style={{ marginBottom: "20px", display: "flex", justifyContent: "center", gap: "10px" }}>
                     <button
-                        onClick={() => setUseWebcam(false)}
-                        className={`btn ${!useWebcam ? "btn-primary" : "btn-outline-primary"} btn-sm`}
+                        onClick={() => { setMode("image"); setUseWebcam(false); setResult(null); }}
+                        className={`btn ${mode === "image" ? "btn-primary" : "btn-outline-primary"} btn-sm`}
                         style={{ minWidth: "120px" }}
                     >
-                        Upload Image
+                        Image Analysis
                     </button>
                     <button
-                        onClick={() => setUseWebcam(true)}
-                        className={`btn ${useWebcam ? "btn-primary" : "btn-outline-primary"} btn-sm`}
+                        onClick={() => { setMode("video"); setResult(null); }}
+                        className={`btn ${mode === "video" ? "btn-primary" : "btn-outline-primary"} btn-sm`}
                         style={{ minWidth: "120px" }}
                     >
-                        Use Webcam
+                        Video (Blink Rate)
                     </button>
                 </div>
 
-                {/* Conditional Input */}
-                {!useWebcam ? (
-                    <div style={{ marginBottom: "20px" }}>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="form-control"
-                            style={{ margin: "0 auto", maxWidth: "300px" }}
-                        />
-                    </div>
-                ) : (
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
-                        <Webcam
-                            audio={false}
-                            ref={webcamRef}
-                            screenshotFormat="image/jpeg"
-                            width={320}
-                            height={240}
-                            videoConstraints={{ facingMode: "user" }}
-                        />
-                    </div>
+                {/* Image Mode */}
+                {mode === "image" && (
+                    <>
+                        {/* Toggle between upload and webcam */}
+                        <div style={{ marginBottom: "20px", display: "flex", justifyContent: "center", gap: "10px" }}>
+                            <button
+                                onClick={() => setUseWebcam(false)}
+                                className={`btn ${!useWebcam ? "btn-primary" : "btn-outline-primary"} btn-sm`}
+                                style={{ minWidth: "120px" }}
+                            >
+                                Upload Image
+                            </button>
+                            <button
+                                onClick={() => setUseWebcam(true)}
+                                className={`btn ${useWebcam ? "btn-primary" : "btn-outline-primary"} btn-sm`}
+                                style={{ minWidth: "120px" }}
+                            >
+                                Use Webcam
+                            </button>
+                        </div>
+                    </>
                 )}
 
-                <button
-                    onClick={handleUpload}
-                    style={{
-                        padding: "12px 24px",
-                        cursor: "pointer",
-                        backgroundColor: "#28a745",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        width: "220px",
-                        marginBottom: "30px",
-                        fontSize: "16px",
-                        fontWeight: "bold"
-                    }}
-                >
-                    {isLoading ? "Processing..." : useWebcam ? "Capture & Predict" : "Upload & Predict"}
-                </button>
+                {/* Image Mode Input */}
+                {mode === "image" && (
+                    <>
+                        {!useWebcam ? (
+                            <div style={{ marginBottom: "20px" }}>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="form-control"
+                                    style={{ margin: "0 auto", maxWidth: "300px" }}
+                                />
+                            </div>
+                        ) : (
+                            <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
+                                <Webcam
+                                    audio={false}
+                                    ref={webcamRef}
+                                    screenshotFormat="image/jpeg"
+                                    width={320}
+                                    height={240}
+                                    videoConstraints={{ facingMode: "user" }}
+                                />
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleUpload}
+                            disabled={isLoading}
+                            style={{
+                                padding: "12px 24px",
+                                cursor: isLoading ? "not-allowed" : "pointer",
+                                backgroundColor: isLoading ? "#6c757d" : "#28a745",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "8px",
+                                width: "220px",
+                                marginBottom: "30px",
+                                fontSize: "16px",
+                                fontWeight: "bold"
+                            }}
+                        >
+                            {isLoading ? "Processing..." : useWebcam ? "Capture & Predict" : "Upload & Predict"}
+                        </button>
+                    </>
+                )}
+
+                {/* Video Mode Input */}
+                {mode === "video" && (
+                    <>
+                        <div style={{ marginBottom: "20px" }}>
+                            <p style={{ fontSize: "14px", color: "#666", marginBottom: "10px" }}>
+                                Upload a video to analyze blink rate (recommended: 10-30 seconds)
+                            </p>
+                            <input
+                                type="file"
+                                accept="video/*"
+                                onChange={handleVideoChange}
+                                className="form-control"
+                                style={{ margin: "0 auto", maxWidth: "300px" }}
+                            />
+                            {selectedVideo && (
+                                <p style={{ fontSize: "12px", color: "#28a745", marginTop: "5px" }}>
+                                    Selected: {selectedVideo.name} ({(selectedVideo.size / 1024 / 1024).toFixed(2)} MB)
+                                </p>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={handleVideoUpload}
+                            disabled={isLoading || !selectedVideo}
+                            style={{
+                                padding: "12px 24px",
+                                cursor: (isLoading || !selectedVideo) ? "not-allowed" : "pointer",
+                                backgroundColor: (isLoading || !selectedVideo) ? "#6c757d" : "#28a745",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "8px",
+                                width: "220px",
+                                marginBottom: "30px",
+                                fontSize: "16px",
+                                fontWeight: "bold"
+                            }}
+                        >
+                            {isLoading ? "Analyzing Video..." : "Analyze Blink Rate"}
+                        </button>
+                    </>
+                )}
 
                 {/* Result Section */}
                 {result && (
@@ -259,14 +392,40 @@ const UploadPage = () => {
                         textAlign: "left",
                         color: "black"
                     }}>
-                        <h3 style={{ color: "#007BFF", marginBottom: "15px" }}>Prediction Result:</h3>
-                        <p><strong>Disease:</strong> {result.disease}</p>
-                        <p><strong>Confidence:</strong> {(result.confidence * 100).toFixed(2)}%</p>
-                        <p><strong>Remedy:</strong> {result.remedy}</p>
-                        <hr />
-                        <h4 style={{ marginTop: "15px", color: "#007BFF" }}>Additional Indicators</h4>
-                        <p><strong>Blink rate:</strong> {result.blink_rate} per minute ({result.blink_status})</p>
-                        <p><strong>Myopia:</strong> {result.myopia_risk} {(result.myopia_confidence * 100).toFixed(0)}%</p>
+                        {mode === "video" ? (
+                            <>
+                                <h3 style={{ color: "#007BFF", marginBottom: "15px" }}>Blink Rate Analysis:</h3>
+                                <p><strong>Blink Rate:</strong> {result.blink_rate} blinks per minute</p>
+                                <p><strong>Status:</strong> <span style={{ 
+                                    color: result.blink_status === "normal" ? "#28a745" : 
+                                           result.blink_status === "low" ? "#ffc107" : "#dc3545",
+                                    fontWeight: "bold"
+                                }}>{result.blink_status.toUpperCase()}</span></p>
+                                {result.blink_count !== undefined && (
+                                    <p><strong>Total Blinks:</strong> {result.blink_count}</p>
+                                )}
+                                {result.video_duration !== undefined && (
+                                    <p><strong>Video Duration:</strong> {result.video_duration.toFixed(1)} seconds</p>
+                                )}
+                                <hr style={{ marginTop: "15px" }} />
+                                <p style={{ fontSize: "14px", color: "#666", marginTop: "10px" }}>
+                                    {result.blink_status === "low" && "⚠️ Low blink rate detected. This may indicate eye strain or fatigue."}
+                                    {result.blink_status === "normal" && "✓ Blink rate is within normal range (12-30 blinks/minute)."}
+                                    {result.blink_status === "high" && "⚠️ High blink rate detected. This may indicate irritation or dryness."}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <h3 style={{ color: "#007BFF", marginBottom: "15px" }}>Prediction Result:</h3>
+                                <p><strong>Disease:</strong> {result.disease}</p>
+                                <p><strong>Confidence:</strong> {(result.confidence * 100).toFixed(2)}%</p>
+                                <p><strong>Remedy:</strong> {result.remedy}</p>
+                                <hr />
+                                <h4 style={{ marginTop: "15px", color: "#007BFF" }}>Additional Indicators</h4>
+                                <p><strong>Blink rate:</strong> {result.blink_rate} per minute ({result.blink_status})</p>
+                                <p><strong>Myopia:</strong> {result.myopia_risk} {(result.myopia_confidence * 100).toFixed(0)}%</p>
+                            </>
+                        )}
                     </div>
                 )}
 

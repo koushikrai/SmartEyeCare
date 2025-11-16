@@ -7,6 +7,7 @@ const Signup = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
     const backgroundStyle = {
@@ -30,11 +31,20 @@ const Signup = () => {
     const handleSignup = async (e) => {
         e.preventDefault();
         setError("");
+        setIsLoading(true);
         try {
-            await axios.post("http://localhost:5000/signup", { email, password });
-            router.push("/about");
+            const response = await axios.post("http://localhost:5000/signup", { email, password });
+            if (response.data.message === "Signup successful") {
+                router.push("/about");
+            }
         } catch (err) {
-            setError("Signup failed. Email may already exist.");
+            if (err.response && err.response.data && err.response.data.error) {
+                setError(err.response.data.error);
+            } else {
+                setError("Signup failed. Please try again.");
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -68,7 +78,13 @@ const Signup = () => {
                             required
                         />
                     </div>
-                    <button type="submit" className="btn btn-primary w-100">Sign Up</button>
+                    <button 
+                        type="submit" 
+                        className="btn btn-primary w-100"
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Signing up...' : 'Sign Up'}
+                    </button>
                 </form>
                 <div className="text-center mt-3">
                     <span>Already have an account? </span>

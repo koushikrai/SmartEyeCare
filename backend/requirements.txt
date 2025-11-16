@@ -5,3 +5,12 @@ tensorflow>=2.12
 scikit-learn
 numpy
 pandas
+pymongo
+bcrypt
+scipy
+python-dotenv
+# mediapipe - Optional: Required for blink detection
+# Note: MediaPipe supports Python 3.8-3.11. 
+# For Python 3.12+: Use Nix (nix-shell) or install Python 3.11 manually
+# Install with: pip install mediapipe
+# Or use Nix: nix-shell (automatically provides Python 3.11 with MediaPipe)

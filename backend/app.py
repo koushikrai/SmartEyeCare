@@ -4,8 +4,12 @@ from werkzeug.utils import secure_filename
 import os
 import numpy as np
 from PIL import Image
+from dotenv import load_dotenv
 from api.signup import signup_bp
 from api.login import login_bp
+
+# Load environment variables from .env file
+load_dotenv()
 
 try:
     from tensorflow.keras.models import load_model
@@ -131,8 +135,52 @@ def predict_redness(image_path):
         return {"error": str(e)}
 
 def predict_blink_rate(video_path):
-    # Placeholder for blink rate prediction (MVP)
-    return {"blink_rate": 20, "status": "normal"}
+    """
+    Predict blink rate from video using MediaPipe Face Mesh.
+    Uses Eye Aspect Ratio (EAR) to detect blinks.
+    """
+    try:
+        from utils.blink_rate_detector import detect_blink_rate
+        
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+        
+        result = detect_blink_rate(video_path)
+        
+        # Ensure all required fields are present
+        return {
+            "blink_rate": result.get("blink_rate", 18),
+            "status": result.get("status", "normal"),
+            "blink_count": result.get("blink_count", 0),
+            "video_duration_seconds": result.get("video_duration_seconds", 0),
+            "frames_processed": result.get("frames_processed", 0)
+        }
+    except ImportError as e:
+        # MediaPipe not installed
+        print(f"Blink detection ImportError: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "blink_rate": 18,  # Fallback value
+            "status": "normal",
+            "blink_count": 0,
+            "video_duration_seconds": 0,
+            "frames_processed": 0,
+            "error": f"MediaPipe is not installed or import failed: {str(e)}"
+        }
+    except Exception as e:
+        print(f"Blink detection error: {e}")
+        import traceback
+        traceback.print_exc()
+        # Fallback if detection fails
+        return {
+            "blink_rate": 18,
+            "status": "normal",
+            "blink_count": 0,
+            "video_duration_seconds": 0,
+            "frames_processed": 0,
+            "error": f"Blink detection failed: {str(e)}"
+        }
 
 def predict_myopia(image_path):
     # Placeholder for myopia prediction (MVP)
@@ -197,19 +245,40 @@ def upload_and_predict_redness():
 
 @app.route("/api/predict/blink", methods=["POST"])
 def upload_and_predict_blink():
-    if "video" not in request.files:
-        return jsonify({"error": "No file part"}), 400
+    try:
+        if "video" not in request.files:
+            return jsonify({"error": "No file part"}), 400
 
-    file = request.files["video"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+        file = request.files["video"]
+        if file.filename == "":
+            return jsonify({"error": "No selected file"}), 400
 
-    filename = secure_filename(file.filename)
-    video_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(video_path)
+        filename = secure_filename(file.filename)
+        video_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        
+        # Save the file
+        try:
+            file.save(video_path)
+        except Exception as e:
+            print(f"Error saving video file: {e}")
+            return jsonify({"error": f"Failed to save video file: {str(e)}"}), 500
 
-    result = predict_blink_rate(video_path)
-    return jsonify(result)
+        # Process the video
+        result = predict_blink_rate(video_path)
+        
+        # Clean up the uploaded file after processing
+        try:
+            if os.path.exists(video_path):
+                os.remove(video_path)
+        except Exception as e:
+            print(f"Warning: Could not delete temporary video file: {e}")
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in upload_and_predict_blink: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to process video: {str(e)}"}), 500
 
 @app.route("/api/predict/myopia", methods=["POST"])
 def upload_and_predict_myopia():

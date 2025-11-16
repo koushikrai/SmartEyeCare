@@ -5,3 +5,7 @@ backend/models/
 *.dll
 *.pyd
 /node_modules
+.env
+.env.local
+result
+.direnv

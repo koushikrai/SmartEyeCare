@@ -1,10 +1,13 @@
 'use client'
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
     const backgroundStyle = {
@@ -25,17 +28,45 @@ const Login = () => {
         width: '400px',
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle login logic here
-        console.log({ email, password });
-        router.push('/about');
+        setError('');
+        setIsLoading(true);
+
+        try {
+            const response = await axios.post('http://localhost:5000/login', {
+                email,
+                password
+            });
+
+            if (response.data.message === 'Login successful') {
+                // Store user info in localStorage (optional)
+                localStorage.setItem('user', JSON.stringify({
+                    email: response.data.email,
+                    user_id: response.data.user_id
+                }));
+                router.push('/about');
+            }
+        } catch (err) {
+            if (err.response && err.response.data && err.response.data.error) {
+                setError(err.response.data.error);
+            } else {
+                setError('Login failed. Please try again.');
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
         <div style={backgroundStyle}>
             <div style={formContainerStyle}>
                 <h2 className="text-center mb-4">Login</h2>
+                {error && (
+                    <div className="alert alert-danger" role="alert">
+                        {error}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit}>
                     <div className="mb-3">
                         <label htmlFor="email" className="form-label">Email address</label>
@@ -59,7 +90,13 @@ const Login = () => {
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
-                    <button type="submit" className="btn btn-primary w-100">Login</button>
+                    <button 
+                        type="submit" 
+                        className="btn btn-primary w-100"
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Logging in...' : 'Login'}
+                    </button>
                 </form>
                 <div className="text-center mt-3">
                     <span>Don't have an account? </span>
